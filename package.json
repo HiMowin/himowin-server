@@ -1,6 +1,7 @@
 {
   "name": "himowin-server",
   "version": "1.0.0",
+  "description": "Webhook for Tapjoy callback",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
