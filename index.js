@@ -1,18 +1,41 @@
 const express = require('express');
+const admin = require('firebase-admin');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
-app.use(express.json());
+const serviceAccount = require('./serviceAccountKey.json');
 
-app.post('/tapjoy-callback', (req, res) => {
-  const { user_id, reward, currency } = req.body;
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
 
-  console.log('Received Tapjoy callback:');
-  console.log('User ID:', user_id);
-  console.log('Reward:', reward);
-  console.log('Currency:', currency);
+const db = admin.firestore();
 
-  res.status(200).send('Callback received');
+app.get('/', async (req, res) => {
+  const userId = req.query.user_id;
+  const reward = parseInt(req.query.reward) || 0;
+
+  if (!userId || reward === 0) {
+    return res.status(400).send('Missing user_id or reward');
+  }
+
+  try {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).send('User not found');
+    }
+
+    await userRef.update({
+      coins: admin.firestore.FieldValue.increment(reward),
+    });
+
+    return res.status(200).send('Reward added successfully');
+  } catch (error) {
+    console.error('Error:', error);
+    return res.status(500).send('Internal server error');
+  }
 });
 
 app.listen(PORT, () => {
