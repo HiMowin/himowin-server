@@ -3,14 +3,17 @@ const admin = require('firebase-admin');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-const serviceAccount = require('./serviceAccountKey.json');
+// ✅ قراءة مفتاح الخدمة من المتغير البيئي بدلاً من الملف
+const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_JSON);
 
+// ✅ تهيئة Firebase
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
 const db = admin.firestore();
 
+// ✅ استقبال البيانات من أي شركة (user_id و reward عبر الرابط)
 app.get('/', async (req, res) => {
   const userId = req.query.user_id;
   const reward = parseInt(req.query.reward) || 0;
@@ -38,6 +41,7 @@ app.get('/', async (req, res) => {
   }
 });
 
+// ✅ تشغيل الخادم
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
