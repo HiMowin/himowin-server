@@ -3,22 +3,21 @@ const admin = require('firebase-admin');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// ✅ قراءة مفتاح الخدمة من المتغير البيئي بدلاً من الملف
+// تهيئة Firebase
 const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_JSON);
-
-// ✅ تهيئة Firebase
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
 const db = admin.firestore();
 
-// ✅ استقبال البيانات من أي شركة (user_id و reward عبر الرابط)
+// 📌 Webhook لاختبار إضافة النقاط فقط (بدون حماية حالياً)
 app.get('/', async (req, res) => {
   const userId = req.query.user_id;
   const reward = parseInt(req.query.reward) || 0;
 
   if (!userId || reward === 0) {
+    console.log('❌ Missing parameters:', { userId, reward });
     return res.status(400).send('Missing user_id or reward');
   }
 
@@ -27,28 +26,29 @@ app.get('/', async (req, res) => {
     const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
-      console.log('User not found in database:', userId);
+      console.log('❌ User not found:', userId);
       return res.status(404).send('User not found');
     }
 
-    // ✅ تتبع قبل التحديث
-    console.log('Trying to update coins for user:', userId);
-
+    console.log('✅ Adding reward:', reward, 'to user:', userId);
     await userRef.update({
       coins: admin.firestore.FieldValue.increment(reward),
     });
 
-    // ✅ تتبع بعد التحديث
-    console.log('Coins updated successfully for user:', userId);
-
+    console.log('✅ Reward added successfully');
     return res.status(200).send('Reward added successfully');
   } catch (error) {
-    console.error('Error while updating coins:', error);
+    console.error('❌ Error while updating coins:', error);
     return res.status(500).send('Internal server error');
   }
 });
 
-// ✅ تشغيل الخادم
+// مسار اختباري لعرض أن السيرفر شغال
+app.get('/test', (req, res) => {
+  res.send('Server is working ✅');
+});
+
+// تشغيل الخادم
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
