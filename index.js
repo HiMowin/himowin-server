@@ -10,12 +10,23 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
-// ✅ المفتاح السري (يجب أن يكون مطابق 100%)
+// ✅ المفتاح السري لحماية الويب هوك
 const SECRET_KEY = 'Hmiobhaa14/';
 
 // ✅ دالة التحقق من المفتاح
 function isAuthorized(req) {
   return req.query.key === SECRET_KEY;
+}
+
+// ✅ دالة لتسجيل سجل المكافأة مع اسم العرض
+async function logReward(userId, source, reward, offerName) {
+  const logRef = db.collection('users').doc(userId).collection('reward_history').doc();
+  await logRef.set({
+    source,
+    reward,
+    offer_name: offerName || 'Unknown',
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+  });
 }
 
 // ✅ Webhook خاص بـ BitLabs
@@ -26,6 +37,7 @@ app.get('/bitlabs', async (req, res) => {
 
   const userId = req.query.user_id;
   const reward = parseInt(req.query.reward) || 0;
+  const offerName = req.query.offer_name || 'Unknown';
 
   if (!userId || reward === 0) {
     return res.status(400).send('Missing user_id or reward');
@@ -43,7 +55,9 @@ app.get('/bitlabs', async (req, res) => {
       coins: admin.firestore.FieldValue.increment(reward),
     });
 
-    console.log('✅ BitLabs reward added for', userId);
+    await logReward(userId, 'BitLabs', reward, offerName);
+
+    console.log(`✅ BitLabs reward added for ${userId} | Offer: ${offerName}`);
     return res.status(200).send('BitLabs reward added');
   } catch (error) {
     console.error('❌ Error from BitLabs:', error);
@@ -59,6 +73,7 @@ app.get('/tapjoy', async (req, res) => {
 
   const userId = req.query.user_id;
   const reward = parseInt(req.query.reward) || 0;
+  const offerName = req.query.offer_name || 'Unknown';
 
   if (!userId || reward === 0) {
     return res.status(400).send('Missing user_id or reward');
@@ -76,7 +91,9 @@ app.get('/tapjoy', async (req, res) => {
       coins: admin.firestore.FieldValue.increment(reward),
     });
 
-    console.log('✅ Tapjoy reward added for', userId);
+    await logReward(userId, 'Tapjoy', reward, offerName);
+
+    console.log(`✅ Tapjoy reward added for ${userId} | Offer: ${offerName}`);
     return res.status(200).send('Tapjoy reward added');
   } catch (error) {
     console.error('❌ Error from Tapjoy:', error);
