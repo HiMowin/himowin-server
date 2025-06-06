@@ -11,14 +11,24 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-// 📌 Webhook لاختبار إضافة النقاط فقط (بدون حماية حالياً)
-app.get('/', async (req, res) => {
+// 🔐 المفتاح السري النهائي
+const BITLABS_SECRET = 'Hmiobhaa14/';
+
+// ✅ Webhook محمي لـ BitLabs
+app.get('/bitlabs', async (req, res) => {
   const userId = req.query.user_id;
   const reward = parseInt(req.query.reward) || 0;
+  const secret = req.query.secret;
 
-  if (!userId || reward === 0) {
-    console.log('❌ Missing parameters:', { userId, reward });
-    return res.status(400).send('Missing user_id or reward');
+  if (!userId || reward === 0 || !secret) {
+    console.log('❌ Missing parameters:', { userId, reward, secret });
+    return res.status(400).send('Missing parameters');
+  }
+
+  // ✅ التحقق من صحة المفتاح
+  if (secret !== BITLABS_SECRET) {
+    console.log('❌ Unauthorized access attempt with secret:', secret);
+    return res.status(403).send('Forbidden');
   }
 
   try {
@@ -43,12 +53,11 @@ app.get('/', async (req, res) => {
   }
 });
 
-// مسار اختباري لعرض أن السيرفر شغال
+// اختبار أن السيرفر شغال
 app.get('/test', (req, res) => {
   res.send('Server is working ✅');
 });
 
-// تشغيل الخادم
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
