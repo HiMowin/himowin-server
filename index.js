@@ -3,32 +3,32 @@ const admin = require('firebase-admin');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// تهيئة Firebase
+// ✅ تهيئة Firebase
 const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_JSON);
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(serviceAccount),
 });
-
 const db = admin.firestore();
 
-// 🔐 المفتاح السري النهائي
-const BITLABS_SECRET = 'Hmiobhaa14/';
+// ✅ المفتاح السري (يجب أن يكون مطابق 100%)
+const SECRET_KEY = 'Hmiobhaa14/';
 
-// ✅ Webhook محمي لـ BitLabs
+// ✅ دالة التحقق من المفتاح
+function isAuthorized(req) {
+  return req.query.key === SECRET_KEY;
+}
+
+// ✅ Webhook خاص بـ BitLabs
 app.get('/bitlabs', async (req, res) => {
-  const userId = req.query.user_id;
-  const reward = parseInt(req.query.reward) || 0;
-  const secret = req.query.secret;
-
-  if (!userId || reward === 0 || !secret) {
-    console.log('❌ Missing parameters:', { userId, reward, secret });
-    return res.status(400).send('Missing parameters');
+  if (!isAuthorized(req)) {
+    return res.status(403).send('Unauthorized');
   }
 
-  // ✅ التحقق من صحة المفتاح
-  if (secret !== BITLABS_SECRET) {
-    console.log('❌ Unauthorized access attempt with secret:', secret);
-    return res.status(403).send('Forbidden');
+  const userId = req.query.user_id;
+  const reward = parseInt(req.query.reward) || 0;
+
+  if (!userId || reward === 0) {
+    return res.status(400).send('Missing user_id or reward');
   }
 
   try {
@@ -36,28 +36,55 @@ app.get('/bitlabs', async (req, res) => {
     const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
-      console.log('❌ User not found:', userId);
       return res.status(404).send('User not found');
     }
 
-    console.log('✅ Adding reward:', reward, 'to user:', userId);
     await userRef.update({
       coins: admin.firestore.FieldValue.increment(reward),
     });
 
-    console.log('✅ Reward added successfully');
-    return res.status(200).send('Reward added successfully');
+    console.log('✅ BitLabs reward added for', userId);
+    return res.status(200).send('BitLabs reward added');
   } catch (error) {
-    console.error('❌ Error while updating coins:', error);
+    console.error('❌ Error from BitLabs:', error);
     return res.status(500).send('Internal server error');
   }
 });
 
-// اختبار أن السيرفر شغال
-app.get('/test', (req, res) => {
-  res.send('Server is working ✅');
+// ✅ Webhook خاص بـ Tapjoy
+app.get('/tapjoy', async (req, res) => {
+  if (!isAuthorized(req)) {
+    return res.status(403).send('Unauthorized');
+  }
+
+  const userId = req.query.user_id;
+  const reward = parseInt(req.query.reward) || 0;
+
+  if (!userId || reward === 0) {
+    return res.status(400).send('Missing user_id or reward');
+  }
+
+  try {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).send('User not found');
+    }
+
+    await userRef.update({
+      coins: admin.firestore.FieldValue.increment(reward),
+    });
+
+    console.log('✅ Tapjoy reward added for', userId);
+    return res.status(200).send('Tapjoy reward added');
+  } catch (error) {
+    console.error('❌ Error from Tapjoy:', error);
+    return res.status(500).send('Internal server error');
+  }
 });
 
+// ✅ تشغيل الخادم
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`✅ Server is running on port ${PORT}`);
 });
