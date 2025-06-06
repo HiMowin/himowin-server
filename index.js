@@ -11,7 +11,7 @@ admin.initializeApp({
 const db = admin.firestore();
 
 // ✅ المفتاح السري لحماية الويب هوك
-const SECRET_KEY = 'Hmiobhaa14/';
+const SECRET_KEY = process.env.MY_SECRET_KEY;
 
 // ✅ دالة التحقق من المفتاح
 function isAuthorized(req) {
