@@ -27,16 +27,23 @@ app.get('/', async (req, res) => {
     const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
+      console.log('User not found in database:', userId);
       return res.status(404).send('User not found');
     }
+
+    // ✅ تتبع قبل التحديث
+    console.log('Trying to update coins for user:', userId);
 
     await userRef.update({
       coins: admin.firestore.FieldValue.increment(reward),
     });
 
+    // ✅ تتبع بعد التحديث
+    console.log('Coins updated successfully for user:', userId);
+
     return res.status(200).send('Reward added successfully');
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error while updating coins:', error);
     return res.status(500).send('Internal server error');
   }
 });
